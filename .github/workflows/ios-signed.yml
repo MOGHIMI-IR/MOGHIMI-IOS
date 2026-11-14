@@ -1,0 +1,78 @@
+name: iOS Signed Archive
+
+on:
+  workflow_dispatch:
+
+jobs:
+  archive:
+    name: Sign and export iOS IPA
+    runs-on: macos-latest
+    env:
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+    steps:
+      - name: Check required signing secrets
+        shell: bash
+        run: |
+          for name in IOS_TEAM_ID APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_PRIVATE_KEY; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing repository secret: $name"
+              exit 1
+            fi
+          done
+
+      - uses: actions/checkout@v4
+
+      - name: Install tools and geo data
+        run: |
+          brew install xcodegen
+          mkdir -p ios/Resources
+          curl -fL --retry 3 -o ios/Resources/geoip.dat https://github.com/v2fly/geoip/releases/latest/download/geoip.dat
+          curl -fL --retry 3 -o ios/Resources/geosite.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+
+      - name: Generate project and signing API key
+        working-directory: ios
+        shell: bash
+        run: |
+          xcodegen generate --spec project.yml
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          KEY_PATH="$RUNNER_TEMP/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Archive with owner's automatic signing
+        working-directory: ios
+        run: |
+          xcodebuild archive \
+            -project MoghimiV2Ray.xcodeproj \
+            -scheme MoghimiV2Ray \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/MoghimiV2Ray.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic
+
+      - name: Export signed IPA
+        working-directory: ios
+        run: |
+          plutil -replace teamID -string "$IOS_TEAM_ID" ExportOptions.plist 2>/dev/null || \
+            plutil -insert teamID -string "$IOS_TEAM_ID" ExportOptions.plist
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/MoghimiV2Ray.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist ExportOptions.plist
+          test -n "$(find "$RUNNER_TEMP/export" -maxdepth 1 -name '*.ipa' -print -quit)"
+
+      - name: Upload signed IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoghimiV2Ray-iOS-signed
+          path: ${{ runner.temp }}/export/*.ipa
+          retention-days: 30
