@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// Persists profiles, subscriptions and settings in the shared App Group container, and
 /// builds the active Xray config for the extension to run.
