@@ -1,0 +1,72 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ios.yml", "THIRD_PARTY_NOTICES.md"]
+  pull_request:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build unsigned iOS app
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Download geo data
+        run: |
+          mkdir -p Resources
+          curl -fL --retry 3 -o Resources/geoip.dat https://github.com/v2fly/geoip/releases/latest/download/geoip.dat
+          curl -fL --retry 3 -o Resources/geosite.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+          test -s Resources/geoip.dat
+          test -s Resources/geosite.dat
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project MoghimiV2Ray.xcodeproj -scheme MoghimiV2Ray
+
+      - name: Build (unsigned compile check)
+        run: |
+          xcodebuild \
+            -project MoghimiV2Ray.xcodeproj \
+            -scheme MoghimiV2Ray \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Package unsigned IPA
+        run: |
+          APP="build/Build/Products/Release-iphoneos/MoghimiV2Ray.app"
+          test -d "$APP"
+          rm -rf Payload
+          mkdir Payload
+          cp -R "$APP" Payload/
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload MoghimiV2Ray-unsigned.ipa
+          ls -lh MoghimiV2Ray-unsigned.ipa
+
+      - name: Upload unsigned build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoghimiV2Ray-iOS-unsigned
+          path: ios/MoghimiV2Ray-unsigned.ipa
+          retention-days: 30
