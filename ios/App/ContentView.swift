@@ -131,7 +131,7 @@ struct HomeView: View {
                 return
             }
             do { try await vpn.connect() }
-            catch { errorText = "اتصال برقرار نشد: \\(error.localizedDescription)" }
+            catch { errorText = "اتصال برقرار نشد: \(error.localizedDescription)" }
         }
     }
 }
