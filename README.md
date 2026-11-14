@@ -1,27 +1,50 @@
 # Moghimi V2Ray for iOS
 
-Native iOS VPN client project for Moghimi V2Ray. The project is being built separately from the Android app.
+نسخه بومی iOS برنامه مقیمی V2Ray؛ این مخزن کاملاً مستقل از پروژه اندروید است.
 
-## Safety and privacy goals
-- No Apple ID sign-in, Apple ID password access, or iCloud account access.
-- No analytics, advertising SDK, device fingerprinting, or hidden startup VPN.
-- No system VPN configuration is enabled without the user's explicit action and the iOS consent flow.
-- VPN traffic is handled by the selected server; Supabase is used only to retrieve the app's active public profile list and any authorized config files.
-- No self-downloading or self-installing executable updates.
+## وضعیت فعلی
+- پایه برنامه با SwiftUI و افزونه اختصاصی Apple Network Extension نوشته شده است.
+- حداقل نسخه هدف iOS 15 است؛ هدف استفاده از یک نسخه واحد برای آیفون 13 به بعد.
+- هسته Xray از طریق Swift package به نام SwiftyXrayKit اجرا می‌شود.
+- ورود و مدیریت کانفیگ‌ها، ویرایش پروفایل، QR و لینک اشتراک، تست تأخیر و انتخاب سرور پس از فشردن اتصال در سورس قرار گرفته‌اند.
+- همگام‌سازی اختصاصی کانفیگ‌های فعال سایت مقیمی از Supabase پیاده‌سازی شده و گروه کانفیگ‌های سایت از کانفیگ‌های دستی جدا نگه داشته می‌شود.
+- اتصال خودکار در شروع برنامه فعال نیست؛ اولین اتصال با توضیح حریم خصوصی و تأیید رسمی iOS انجام می‌شود.
 
-## Platform
-- Deployment target: iOS 15.0 (intended for iPhone 13 and newer; simulator and device verification remain required).
-- SwiftUI app + Apple Network Extension Packet Tunnel.
-- Xray runtime is supplied through SwiftyXrayKit / LibXray.
-- One app build target is intended to cover supported iPhone models.
+## پروتکل‌ها
+مدل و مبدل لینک برای VLESS، VMess، Trojan، Shadowsocks، Hysteria2، WireGuard، SOCKS5، HTTP، TUIC و AnyTLS در پروژه وجود دارد. پشتیبانی نهایی هر حالت به قابلیت‌های نسخه هسته Xray و تنظیمات همان سرور وابسته است و باید با کانفیگ واقعی آزمایش شود.
 
-## Build status
-Initial source setup only. A successful CI compile, signed device install, VPN tunnel test, and App Store approval are not claimed until those checks have actually completed.
+## حریم خصوصی و دسترسی‌ها
+- برنامه Apple ID، رمز Apple ID یا iCloud را درخواست نمی‌کند.
+- هیچ SDK تبلیغاتی، ابزار تحلیل رفتار یا ردیابی در پروژه اضافه نشده است.
+- برنامه دسترسی موقعیت مکانی، مخاطبان یا عکس‌ها را درخواست نمی‌کند.
+- دوربین فقط هنگامی درخواست می‌شود که کاربر اسکن QR را باز کند.
+- برای اتصال واقعی VPN، iOS باید تنظیم اختصاصی Packet Tunnel را با اجازه کاربر ثبت کند؛ این مجوز سیستمی لازم است و برنامه نمی‌تواند آن را حذف یا پنهانی فعال کند.
+- برنامه در شروع اجرا VPN را روشن نمی‌کند و نصب‌کننده یا به‌روزرسان خودکار APK/IPA ندارد.
 
-## Signing requirements
-A real device VPN build requires the Apple Network Extension capability and matching provisioning profiles. The certificate, private key, provisioning profile, Team ID, and bundle IDs must belong to the app owner's Apple Developer account. Never commit these files or passwords. The GitHub workflow will build unsigned artifacts by default and can be extended to sign only after the owner configures the required GitHub Actions secrets.
+جزئیات در [سیاست حریم خصوصی](PrivacyPolicy.md) آمده است.
 
-Apple's App Store rules for VPN apps require organization enrollment and specific privacy disclosures. See [Apple App Review Guidelines, section 5.4](https://developer.apple.com/app-store/review/guidelines/).
+## بیلد و امضا
+گردش‌کار **iOS CI** در GitHub Actions سورس را روی macOS کامپایل می‌کند و خروجی unsigned برای بررسی ساخت می‌سازد. این خروجی امضای معتبر ندارد و برای نصب و استفاده واقعی VPN روی آیفون کافی نیست.
 
-## Upstream notices
-The iOS implementation is based on the GPL-3.0-licensed palazikVPN iOS client (iliYF/xStarRay). Changes for Moghimi are identified in this repository. The full GPL-3.0 license and required notices are retained. The runtime package SwiftyXrayKit is separately licensed; see THIRD_PARTY_NOTICES.md.
+برای نصب روی دستگاه واقعی یا انتشار، باید حساب Apple Developer خودت مجوز Network Extension و App Group را برای شناسه‌های این پروژه فعال کند و با گواهی و provisioning profile متعلق به همان حساب امضا انجام شود. هیچ گواهی یا هویت ساختگی در پروژه قرار داده نشده است.
+
+- شناسه برنامه: `com.moghimi.vpn.ios`
+- شناسه افزونه تونل: `com.moghimi.vpn.ios.PacketTunnel`
+- App Group: `group.com.moghimi.vpn.ios`
+
+راهنمای امضا و تنظیم Secretهای GitHub در [SIGNING.md](SIGNING.md) است. کلید خصوصی یا گواهی را در مخزن Commit نکن.
+
+**نکته انتشار:** طبق بند 5.4 دستورالعمل بررسی اپل، برنامه‌های ارائه‌دهنده VPN در App Store باید توسط توسعه‌دهنده‌ای با عضویت سازمانی عرضه شوند و الزامات افشای حریم خصوصی را رعایت کنند. این یک شرط اپل است و با تغییر کد حذف نمی‌شود.
+
+## ساختار پروژه
+- `ios/App`: رابط، مدل‌ها، parser و همگام‌سازی Supabase
+- `ios/PacketTunnel`: افزونه شبکه برای ایجاد تونل VPN
+- `ios/Shared`: شناسه‌ها و داده‌های مشترک اپ و افزونه
+- `.github/workflows/ios.yml`: بیلد unsigned برای بررسی CI
+- `.github/workflows/ios-signed.yml`: بیلد امضاشده پس از تنظیم Secretهای حساب خودت
+
+## وضعیت تست
+این نسخه هنوز روی آیفون واقعی نصب و آزمایش نشده است. موفقیت کامپایل CI نیز به‌تنهایی اثبات اتصال واقعی VPN، سازگاری همه مدل‌ها یا تأیید App Store نیست. تا وقتی بیلد macOS و سپس تست تونل روی دستگاه واقعی موفق نشود، آن را نسخه آماده انتشار تلقی نکن.
+
+## مجوزها و وابستگی‌ها
+پایه iOS از پروژه GPL-3.0 palazikVPN (iliYF/xStarRay) اقتباس شده و مجوز اصلی در [LICENSE](LICENSE) حفظ شده است. اطلاعیه وابستگی‌ها در [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) قرار دارد. هسته Xray از [SwiftyXrayKit](https://github.com/dima-u/SwiftyXrayKit) استفاده می‌کند.
